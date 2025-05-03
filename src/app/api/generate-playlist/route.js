@@ -20,6 +20,23 @@ async function retryOperation(operation) {
   throw new Error('This should never be reached');
 }
 
+// Helper function to clean response data
+function cleanResponseData(playlist) {
+  // Clean playlist object
+  const cleanPlaylist = {
+    id: playlist._id.toString(),
+    theme: playlist.theme,
+    videos: playlist.videos.map(video => ({
+      id: video._id.toString(),
+      title: video.title,
+      videoId: video.videoId,
+      thumbnail: video.thumbnail
+    }))
+  };
+  
+  return cleanPlaylist;
+}
+
 export async function POST(request) {
   try {
     const { theme } = await request.json();
@@ -64,9 +81,12 @@ export async function POST(request) {
 
     console.log('Final result with populated videos:', result);
 
-    return NextResponse.json(result);
+    // Clean the response data before sending it
+    const cleanedResponse = cleanResponseData(result);
+
+    return NextResponse.json(cleanedResponse);
   } catch (error) {
     console.error('Error generating playlist:', error);
     return NextResponse.json({ error: 'Failed to generate playlist' }, { status: 500 });
   }
-} 
+}

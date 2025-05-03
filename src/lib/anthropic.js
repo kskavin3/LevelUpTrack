@@ -14,7 +14,7 @@ export async function generatePlaylistIdeas(theme) {
   console.log('Sending prompt to Anthropic API:', prompt);
 
   const response = await anthropicClient.messages.create({
-    model: 'claude-3-5-sonnet-20240620',
+    model: 'claude-3-7-sonnet-20250219',
     max_tokens: 2000,
     messages: [
       {
