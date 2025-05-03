@@ -154,7 +154,7 @@ export default function ChatInterface({ conversationId, onConversationChange }) 
         ...updatedMessages, 
         { 
           role: 'assistant', 
-          content: `Here's a learning playlist to help you become a ${inputValue}:` 
+          content: `Here's how to help you become a ${inputValue}:` 
         },
         {
           role: 'assistant',
@@ -208,7 +208,6 @@ export default function ChatInterface({ conversationId, onConversationChange }) 
     if (message.type === 'playlist-ideas') {
       return (
         <div key={index} className="bg-white shadow-sm rounded-lg p-4 max-w-[90%]">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Generated playlist ideas:</h3>
           <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
             {message.content.map((idea, idx) => (
               <li key={idx}>{idea}</li>
@@ -221,7 +220,6 @@ export default function ChatInterface({ conversationId, onConversationChange }) 
     if (message.type === 'playlist') {
       return (
         <div key={index} className="bg-white shadow-sm rounded-lg p-4 max-w-[95%] w-full mt-2">
-          <h3 className="text-lg font-bold mb-4">{message.content.theme} Learning Playlist</h3>
           <div className="relative">
             <button 
               onClick={() => scrollCarousel('left')}
