@@ -9,11 +9,21 @@ const PlaylistSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-}, { 
-  timestamps: true 
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Check if the model already exists to prevent recompilation errors during development
+// Virtual for videos
+PlaylistSchema.virtual('videos', {
+  ref: 'Video',
+  localField: '_id',
+  foreignField: 'playlistId',
+  justOne: false
+});
+
+// Ensure the model isn't already defined
 const Playlist = mongoose.models.Playlist || mongoose.model('Playlist', PlaylistSchema);
 
 export default Playlist; 

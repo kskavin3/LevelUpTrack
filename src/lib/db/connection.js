@@ -2,6 +2,10 @@ import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/leveluptrack';
 
+if (!mongoose.connection?.readyState) {
+  mongoose.set('strictQuery', true);
+}
+
 let cached = global.mongoose;
 
 if (!cached) {
@@ -29,7 +33,13 @@ async function connectToDatabase() {
       });
   }
 
-  cached.conn = await cached.promise;
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+
   return cached.conn;
 }
 

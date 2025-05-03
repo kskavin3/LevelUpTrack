@@ -18,11 +18,13 @@ const VideoSchema = new mongoose.Schema({
     ref: 'Playlist',
     required: true
   }
-}, { 
-  timestamps: true 
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Check if the model already exists to prevent recompilation errors during development
+// Ensure the model isn't already defined
 const Video = mongoose.models.Video || mongoose.model('Video', VideoSchema);
 
 export default Video; 

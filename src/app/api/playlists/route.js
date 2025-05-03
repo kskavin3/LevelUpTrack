@@ -7,7 +7,10 @@ export async function GET() {
     await connectToDatabase();
     
     // Fetch all playlists with their videos
-    const playlists = await Playlist.find().populate('videos');
+    const playlists = await Playlist.find().populate({
+      path: 'videos',
+      model: 'Video'
+    });
     
     return NextResponse.json({
       success: true,
