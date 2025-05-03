@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { generatePlaylistIdeas } from '@/lib/anthropic';
 import { createPlaylist } from '@/lib/youtube';
 import connectToDatabase from '@/lib/db/connection';
-import Playlist from '@/lib/models/Playlist';
+import { Playlist, Video } from '@/lib/models';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
@@ -31,25 +31,40 @@ export async function POST(request) {
     const ideas = await generatePlaylistIdeas(theme);
     console.log('Generated playlist ideas:', ideas);
 
-    const playlist = await createPlaylist(ideas);
-    console.log('Created playlist:', playlist);
+    const videoData = await createPlaylist(ideas);
+    console.log('Created playlist:', videoData);
 
-    // Store the playlist in MongoDB with retry mechanism
-    const savedPlaylist = await retryOperation(async () => {
+    // Store the playlist and videos in MongoDB with retry mechanism
+    const result = await retryOperation(async () => {
+      // First create the playlist
       const newPlaylist = new Playlist({
-        theme,
-        videos: playlist.map(video => ({
+        theme
+      });
+      const savedPlaylist = await newPlaylist.save();
+      console.log('Saved playlist to database:', savedPlaylist);
+      
+      // Then create all videos with references to the playlist
+      const videoPromises = videoData.map(video => {
+        const newVideo = new Video({
           title: video.title,
           videoId: video.videoId,
           thumbnail: video.thumbnail,
-        }))
+          playlistId: savedPlaylist._id // Set the reference to the playlist
+        });
+        return newVideo.save();
       });
-      return await newPlaylist.save();
+      
+      const savedVideos = await Promise.all(videoPromises);
+      console.log('Saved videos to database:', savedVideos);
+      
+      // Return combined result with playlist populated with videos
+      const populatedPlaylist = await Playlist.findById(savedPlaylist._id).populate('videos');
+      return populatedPlaylist;
     });
 
-    console.log('Saved playlist to database:', savedPlaylist);
+    console.log('Final result with populated videos:', result);
 
-    return NextResponse.json(savedPlaylist);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error generating playlist:', error);
     return NextResponse.json({ error: 'Failed to generate playlist' }, { status: 500 });
