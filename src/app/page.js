@@ -8,7 +8,7 @@ export default function Home() {
         <p className="text-sm text-gray-600">Your AI-powered career development assistant</p>
       </header>
       
-      <main className="flex-1 max-w-3xl w-full mx-auto px-2">
+      <main className="flex-1 w-full mx-auto px-2" style={{ maxWidth: "800px" }}>
         <ChatInterface />
       </main>
     </div>

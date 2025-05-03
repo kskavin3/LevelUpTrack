@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function ChatInterface() {
@@ -11,13 +11,25 @@ export default function ChatInterface() {
   const [loading, setLoading] = useState(false);
   const [playlist, setPlaylist] = useState(null);
   const [playlistIdeas, setPlaylistIdeas] = useState([]);
+  const [isInitialState, setIsInitialState] = useState(true);
   const router = useRouter();
   const carouselRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+
+  // Set initial position on first render
+  useEffect(() => {
+    if (chatContainerRef.current && isInitialState) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [isInitialState]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
+
+    // No longer in initial state once user sends a message
+    setIsInitialState(false);
 
     // Add user message to chat
     const userMessage = { role: 'user', content: inputValue };
@@ -182,21 +194,35 @@ export default function ChatInterface() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 p-4 overflow-y-auto space-y-4 mb-1">
-        {messages.map((message, index) => renderMessage(message, index))}
-        {loading && (
-          <div className="p-3 rounded-lg bg-white shadow-sm max-w-[80%]">
-            <div className="flex space-x-2 items-center">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto scrollbar-hide"
+        style={{ minHeight: 'calc(100vh - 150px)' }}
+      >
+        <div className={`p-4 ${isInitialState ? 'h-full flex flex-col justify-end' : 'space-y-4'}`}>
+          {isInitialState ? (
+            <div className="bg-white shadow-sm rounded-lg p-3 max-w-[80%] mb-4">
+              {messages[0].content}
             </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          ) : (
+            <>
+              {messages.map((message, index) => renderMessage(message, index))}
+              {loading && (
+                <div className="p-3 rounded-lg bg-white shadow-sm max-w-[80%]">
+                  <div className="flex space-x-2 items-center">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </div>
       </div>
-
-      <form onSubmit={handleSendMessage} className="p-3 flex border-t">
+      
+      <form onSubmit={handleSendMessage} className="p-3 flex border-t bg-white sticky bottom-20">
         <input
           type="text"
           value={inputValue}
@@ -204,6 +230,7 @@ export default function ChatInterface() {
           placeholder="Type your desired role..."
           className="flex-1 p-2 border rounded-l-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
           disabled={loading}
+          autoFocus
         />
         <button
           type="submit"
