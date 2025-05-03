@@ -1,29 +1,19 @@
 import Image from "next/image";
-import DbStatus from "@/components/DbStatus";
-import PlaylistManager from "@/components/PlaylistManager";
+import ChatInterface from "@/components/ChatInterface";
 
 export default function Home() {
   return (
     <div className="min-h-screen p-8">
       <main className="max-w-6xl mx-auto space-y-8">
         <div className="text-center">
-          <Image
-            className="dark:invert mx-auto"
-            src="/next.svg"
-            alt="Next.js logo"
-            width={180}
-            height={38}
-            priority
-          />
+          <h1 className="text-3xl font-bold mb-2">LevelUp Track</h1>
+          <p className="text-gray-600">Your AI-powered career development assistant</p>
         </div>
         
-        {/* MongoDB Connection Status */}
-        <div className="max-w-md mx-auto">
-          <DbStatus />
+        {/* Chat Interface */}
+        <div className="h-[75vh] border rounded-lg shadow-sm">
+          <ChatInterface />
         </div>
-
-        {/* Playlist Manager */}
-        <PlaylistManager />
       </main>
     </div>
   );
