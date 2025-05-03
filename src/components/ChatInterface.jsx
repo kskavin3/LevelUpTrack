@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
-export default function ChatInterface() {
+export default function ChatInterface({ conversationId, onConversationChange }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'What role do you want to progress to?' }
   ]);
@@ -12,7 +11,8 @@ export default function ChatInterface() {
   const [playlist, setPlaylist] = useState(null);
   const [playlistIdeas, setPlaylistIdeas] = useState([]);
   const [isInitialState, setIsInitialState] = useState(true);
-  const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
   const carouselRef = useRef(null);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
@@ -23,6 +23,97 @@ export default function ChatInterface() {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [isInitialState]);
+  
+  // Load existing conversation if ID is provided
+  useEffect(() => {
+    if (conversationId) {
+      loadConversation(conversationId);
+    } else {
+      // Reset to initial state for new conversation
+      setMessages([{ role: 'assistant', content: 'What role do you want to progress to?' }]);
+      setIsInitialState(true);
+      setPlaylist(null);
+      setPlaylistIdeas([]);
+    }
+  }, [conversationId]);
+
+  const loadConversation = async (id) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/conversations/${id}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setMessages(data.conversation.messages);
+        setIsInitialState(false);
+        
+        // Extract playlist data if it exists
+        const playlistMessage = data.conversation.messages.find(m => m.type === 'playlist');
+        if (playlistMessage) {
+          setPlaylist(playlistMessage.content);
+        }
+        
+        const ideasMessage = data.conversation.messages.find(m => m.type === 'playlist-ideas');
+        if (ideasMessage) {
+          setPlaylistIdeas(ideasMessage.content);
+        }
+      } else {
+        setError('Failed to load conversation');
+      }
+    } catch (err) {
+      console.error('Error loading conversation:', err);
+      setError('Failed to load conversation');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const saveConversation = async (msgs) => {
+    try {
+      setIsSaving(true);
+      
+      // For new conversations, create a new entry
+      if (!conversationId) {
+        // Extract the role from the first user message
+        const userMsg = msgs.find(m => m.role === 'user');
+        const title = userMsg ? `${userMsg.content.substring(0, 30)}${userMsg.content.length > 30 ? '...' : ''}` : 'New Conversation';
+        
+        const response = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title,
+            messages: msgs
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Notify parent about the new conversation
+          onConversationChange(data.conversation.id);
+        }
+      } else {
+        // For existing conversations, update it
+        await fetch(`/api/conversations/${conversationId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: msgs
+          }),
+        });
+      }
+    } catch (err) {
+      console.error('Error saving conversation:', err);
+      // We don't show an error to the user here to avoid disrupting the chat experience
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -33,7 +124,8 @@ export default function ChatInterface() {
 
     // Add user message to chat
     const userMessage = { role: 'user', content: inputValue };
-    setMessages([...messages, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setLoading(true);
 
     try {
@@ -57,10 +149,9 @@ export default function ChatInterface() {
       setPlaylistIdeas(ideas);
       setPlaylist(data);
 
-      // Add response to chat with playlist title
-      setMessages([
-        ...messages, 
-        userMessage, 
+      // Create final messages array with playlist data
+      const finalMessages = [
+        ...updatedMessages, 
         { 
           role: 'assistant', 
           content: `Here's a learning playlist to help you become a ${inputValue}:` 
@@ -75,7 +166,13 @@ export default function ChatInterface() {
           type: 'playlist',
           content: data
         }
-      ]);
+      ];
+      
+      // Set messages state
+      setMessages(finalMessages);
+      
+      // Save conversation to database
+      saveConversation(finalMessages);
       
       // Scroll to bottom of messages
       setTimeout(() => {
@@ -83,11 +180,13 @@ export default function ChatInterface() {
       }, 100);
     } catch (error) {
       console.error('Error generating playlist:', error);
-      setMessages([
-        ...messages,
-        userMessage,
+      const errorMessages = [
+        ...updatedMessages,
         { role: 'assistant', content: 'Sorry, I encountered an error generating your playlist. Please try again.' }
-      ]);
+      ];
+      
+      setMessages(errorMessages);
+      saveConversation(errorMessages);
     } finally {
       setLoading(false);
       setInputValue('');
@@ -192,6 +291,14 @@ export default function ChatInterface() {
     );
   };
 
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div 
@@ -215,6 +322,9 @@ export default function ChatInterface() {
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
                   </div>
                 </div>
+              )}
+              {isSaving && (
+                <div className="text-xs text-gray-400 text-center">Saving conversation...</div>
               )}
               <div ref={messagesEndRef} />
             </>
