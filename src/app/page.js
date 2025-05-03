@@ -1,29 +1,32 @@
-import Image from "next/image";
-import DbStatus from "@/components/DbStatus";
-import PlaylistManager from "@/components/PlaylistManager";
+'use client';
+
+import { useState } from 'react';
+import ChatInterface from "@/components/ChatInterface";
+import ChatHistorySidebar from "@/components/ChatHistorySidebar";
 
 export default function Home() {
-  return (
-    <div className="min-h-screen p-8">
-      <main className="max-w-6xl mx-auto space-y-8">
-        <div className="text-center">
-          <Image
-            className="dark:invert mx-auto"
-            src="/next.svg"
-            alt="Next.js logo"
-            width={180}
-            height={38}
-            priority
-          />
-        </div>
-        
-        {/* MongoDB Connection Status */}
-        <div className="max-w-md mx-auto">
-          <DbStatus />
-        </div>
+  const [currentConversationId, setCurrentConversationId] = useState(null);
+  
+  const handleConversationSelect = (id) => {
+    setCurrentConversationId(id);
+  };
 
-        {/* Playlist Manager */}
-        <PlaylistManager />
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="py-4 text-center">
+        <h1 className="text-2xl font-bold">LevelUp Track</h1>
+        <p className="text-sm text-gray-600">Your AI-powered career development assistant</p>
+      </header>
+      
+      <main className="flex-1 w-full mx-auto px-2 relative" style={{ maxWidth: "800px" }}>
+        <ChatHistorySidebar 
+          onSelectConversation={handleConversationSelect} 
+          currentConversationId={currentConversationId} 
+        />
+        <ChatInterface 
+          conversationId={currentConversationId}
+          onConversationChange={setCurrentConversationId}
+        />
       </main>
     </div>
   );
