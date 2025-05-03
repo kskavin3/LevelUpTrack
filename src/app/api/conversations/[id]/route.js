@@ -3,10 +3,32 @@ import connectToDatabase from '@/lib/db/connection';
 import { Conversation } from '@/lib/models';
 import mongoose from 'mongoose';
 
+// Helper function to get a safe preview of the last message content
+const getLastMessagePreview = (messages) => {
+  if (!messages || messages.length === 0) return '';
+  
+  const lastMessage = messages[messages.length - 1];
+  const content = lastMessage.content;
+  
+  // Handle different types of content
+  if (typeof content === 'string') {
+    // If content is a string, use substring
+    return content.substring(0, 50) + (content.length > 50 ? '...' : '');
+  } else if (typeof content === 'object') {
+    // If content is an object (like playlist data), use the message type
+    return lastMessage.type ? `${lastMessage.type} data` : 'Complex message';
+  } else {
+    // Fallback for any other content type
+    return 'New message';
+  }
+};
+
 // GET a specific conversation with all messages
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   try {
-    const { id } = params;
+    // Await params before accessing its properties
+    const { params } = context;
+    const id = params.id;
     
     // Connect to MongoDB
     await connectToDatabase();
@@ -40,7 +62,7 @@ export async function GET(request, { params }) {
       }
     });
   } catch (error) {
-    console.error(`Error fetching conversation ${params.id}:`, error);
+    console.error(`Error fetching conversation:`, error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch conversation' },
       { status: 500 }
@@ -49,9 +71,12 @@ export async function GET(request, { params }) {
 }
 
 // PUT to update a conversation (add messages)
-export async function PUT(request, { params }) {
+export async function PUT(request, context) {
   try {
-    const { id } = params;
+    // Await params before accessing its properties
+    const { params } = context;
+    const id = params.id;
+    
     const { messages, title } = await request.json();
     
     // Connect to MongoDB
@@ -80,13 +105,7 @@ export async function PUT(request, { params }) {
       conversation.messages = messages;
       // Update last message preview
       if (messages.length > 0) {
-        const lastMessageContent = 
-          typeof messages[messages.length - 1].content === 'string' 
-            ? messages[messages.length - 1].content 
-            : 'Updated conversation';
-        
-        conversation.lastMessage = lastMessageContent.substring(0, 50) + 
-          (lastMessageContent.length > 50 ? '...' : '');
+        conversation.lastMessage = getLastMessagePreview(messages);
       }
     }
     
@@ -107,7 +126,7 @@ export async function PUT(request, { params }) {
       }
     });
   } catch (error) {
-    console.error(`Error updating conversation ${params.id}:`, error);
+    console.error(`Error updating conversation:`, error);
     return NextResponse.json(
       { success: false, error: 'Failed to update conversation' },
       { status: 500 }
@@ -116,9 +135,11 @@ export async function PUT(request, { params }) {
 }
 
 // DELETE a conversation
-export async function DELETE(request, { params }) {
+export async function DELETE(request, context) {
   try {
-    const { id } = params;
+    // Await params before accessing its properties
+    const { params } = context;
+    const id = params.id;
     
     // Connect to MongoDB
     await connectToDatabase();
@@ -146,7 +167,7 @@ export async function DELETE(request, { params }) {
       message: 'Conversation deleted successfully'
     });
   } catch (error) {
-    console.error(`Error deleting conversation ${params.id}:`, error);
+    console.error(`Error deleting conversation:`, error);
     return NextResponse.json(
       { success: false, error: 'Failed to delete conversation' },
       { status: 500 }

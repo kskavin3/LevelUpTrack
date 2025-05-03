@@ -32,6 +32,26 @@ export async function GET() {
   }
 }
 
+// Helper function to get a safe preview of the last message content
+const getLastMessagePreview = (messages) => {
+  if (!messages || messages.length === 0) return '';
+  
+  const lastMessage = messages[messages.length - 1];
+  const content = lastMessage.content;
+  
+  // Handle different types of content
+  if (typeof content === 'string') {
+    // If content is a string, use substring
+    return content.substring(0, 50) + (content.length > 50 ? '...' : '');
+  } else if (typeof content === 'object') {
+    // If content is an object (like playlist data), use the message type
+    return lastMessage.type ? `${lastMessage.type} data` : 'Complex message';
+  } else {
+    // Fallback for any other content type
+    return 'New message';
+  }
+};
+
 // POST to create a new conversation
 export async function POST(request) {
   try {
@@ -44,10 +64,7 @@ export async function POST(request) {
     const newConversation = new Conversation({
       title,
       messages,
-      lastMessage: messages.length > 0 ? 
-        (messages[messages.length - 1].content.substring(0, 50) + 
-        (messages[messages.length - 1].content.length > 50 ? '...' : '')) : 
-        ''
+      lastMessage: getLastMessagePreview(messages)
     });
     
     // Save to database
