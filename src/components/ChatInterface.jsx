@@ -10,8 +10,10 @@ export default function ChatInterface() {
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [playlist, setPlaylist] = useState(null);
+  const [playlistIdeas, setPlaylistIdeas] = useState([]);
   const router = useRouter();
   const carouselRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -37,17 +39,36 @@ export default function ChatInterface() {
       }
 
       const data = await response.json();
+      
+      // Extract video titles for the playlist ideas
+      const ideas = data.videos.map(video => video.title);
+      setPlaylistIdeas(ideas);
       setPlaylist(data);
 
-      // Add response to chat
+      // Add response to chat with playlist title
       setMessages([
         ...messages, 
         userMessage, 
         { 
           role: 'assistant', 
           content: `Here's a learning playlist to help you become a ${inputValue}:` 
+        },
+        {
+          role: 'assistant',
+          type: 'playlist-ideas',
+          content: ideas
+        },
+        {
+          role: 'assistant',
+          type: 'playlist',
+          content: data
         }
       ]);
+      
+      // Scroll to bottom of messages
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     } catch (error) {
       console.error('Error generating playlist:', error);
       setMessages([
@@ -72,57 +93,44 @@ export default function ChatInterface() {
     }
   };
 
-  return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto">
-      <div className="flex-1 p-4 overflow-y-auto space-y-4 mb-4 rounded-lg bg-gray-50">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`p-3 rounded-lg ${
-              message.role === 'user'
-                ? 'bg-blue-100 ml-auto max-w-[80%]'
-                : 'bg-white border border-gray-200 max-w-[80%]'
-            }`}
-          >
-            {message.content}
-          </div>
-        ))}
-
-        {loading && (
-          <div className="p-3 rounded-lg bg-white border border-gray-200 max-w-[80%]">
-            <div className="flex space-x-2 items-center">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {playlist && (
-        <div className="mb-4 p-4 border rounded-lg bg-white">
-          <h2 className="text-xl font-bold mb-4">{playlist.theme} Learning Playlist</h2>
-          
+  const renderMessage = (message, index) => {
+    if (message.type === 'playlist-ideas') {
+      return (
+        <div key={index} className="bg-white shadow-sm rounded-lg p-4 max-w-[90%]">
+          <h3 className="text-sm font-medium text-gray-600 mb-2">Generated playlist ideas:</h3>
+          <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+            {message.content.map((idea, idx) => (
+              <li key={idx}>{idea}</li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+    
+    if (message.type === 'playlist') {
+      return (
+        <div key={index} className="bg-white shadow-sm rounded-lg p-4 max-w-[95%] w-full mt-2">
+          <h3 className="text-lg font-bold mb-4">{message.content.theme} Learning Playlist</h3>
           <div className="relative">
             <button 
               onClick={() => scrollCarousel('left')}
-              className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 rounded-full p-2 shadow hover:bg-gray-100"
+              className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 rounded-full p-2 shadow-sm hover:bg-gray-100 text-gray-700"
               aria-label="Previous videos"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
             </button>
             
             <div 
               ref={carouselRef}
-              className="flex overflow-x-auto pb-4 gap-4 scrollbar-hide snap-x scroll-smooth px-2"
+              className="flex overflow-x-auto pb-4 gap-4 scrollbar-hide snap-x scroll-smooth px-6"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {playlist.videos?.map((video) => (
-                <div key={video.id} className="flex-shrink-0 w-64 snap-start border rounded-lg p-3 shadow-sm">
-                  <h4 className="font-semibold mb-2 text-sm line-clamp-2 h-10">{video.title}</h4>
-                  <div className="aspect-video mb-2 w-full">
+              {message.content.videos?.map((video) => (
+                <div key={video.id} className="flex-shrink-0 w-72 snap-start border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow duration-200 bg-white">
+                  <h4 className="font-medium mb-2 text-sm line-clamp-2 h-10 text-gray-800">{video.title}</h4>
+                  <div className="aspect-video mb-2 w-full rounded-md overflow-hidden">
                     <iframe
                       width="100%"
                       height="100%"
@@ -131,6 +139,7 @@ export default function ChatInterface() {
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
+                      className="rounded-md"
                     ></iframe>
                   </div>
                 </div>
@@ -139,30 +148,61 @@ export default function ChatInterface() {
             
             <button 
               onClick={() => scrollCarousel('right')}
-              className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/80 rounded-full p-2 shadow hover:bg-gray-100"
+              className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 rounded-full p-2 shadow-sm hover:bg-gray-100 text-gray-700"
               aria-label="Next videos"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
             </button>
           </div>
-            
+          
           <style jsx>{`
             .scrollbar-hide::-webkit-scrollbar {
               display: none;
             }
           `}</style>
         </div>
-      )}
+      );
+    }
+    
+    return (
+      <div
+        key={index}
+        className={`p-3 rounded-lg ${
+          message.role === 'user'
+            ? 'bg-blue-100 ml-auto max-w-[80%]'
+            : 'bg-white shadow-sm max-w-[80%]'
+        }`}
+      >
+        {message.content}
+      </div>
+    );
+  };
 
-      <form onSubmit={handleSendMessage} className="p-2 border-t flex">
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 p-4 overflow-y-auto space-y-4 mb-1">
+        {messages.map((message, index) => renderMessage(message, index))}
+        {loading && (
+          <div className="p-3 rounded-lg bg-white shadow-sm max-w-[80%]">
+            <div className="flex space-x-2 items-center">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <form onSubmit={handleSendMessage} className="p-3 flex border-t">
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="Type your desired role..."
-          className="flex-1 p-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 p-2 border rounded-l-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
           disabled={loading}
         />
         <button
